@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+/*
+ * ══════════════════════════════════════════════════════════════
+ *  SHOPWAVE — GLOBAL STYLESHEET
+ *
+ *  ⚠️  Do NOT put design token values here.
+ *     All colors, radii, shadows and font tokens live in:
+ *     src/lib/theme.ts  ← edit that file to retheme the app.
+ *
+ *  This file only contains:
+ *    1. Tailwind @theme aliases (so Tailwind utilities work)
+ *    2. Base / reset styles
+ *    3. Global component overrides (scrollbar, focus ring)
+ * ══════════════════════════════════════════════════════════════
+ */
+
+/* ────────────────────────────────────────────────────────────
+   TAILWIND v4 THEME EXTENSIONS
+   Maps semantic Tailwind utility classes → CSS custom properties
+   set by src/lib/theme.ts via the root layout.
+
+   This lets you use EITHER style:
+     ✓  className="bg-[var(--accent)]"   (arbitrary value)
+     ✓  className="bg-accent"             (semantic Tailwind class)
+   Both read from the same theme.ts source of truth.
+──────────────────────────────────────────────────────────── */
+@theme {
+  /* Backgrounds */
+  --color-bg:        var(--bg);
+  --color-surface:   var(--surface);
+  --color-surface-2: var(--surface-2);
+
+  /* Brand */
+  --color-accent:       var(--accent);
+  --color-accent-hover: var(--accent-hover);
+
+  /* Text */
+  --color-text-primary:   var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+
+  /* Status */
+  --color-success: var(--success);
+  --color-danger:  var(--danger);
+  --color-warning: var(--warning);
+  --color-info:    var(--info);
+
+  /* Border */
+  --color-border: var(--border);
+
+  /* Border radius */
+  --radius-sm:   var(--radius-sm);
+  --radius-md:   var(--radius-md);
+  --radius-lg:   var(--radius-lg);
+  --radius-xl:   var(--radius-xl);
+  --radius-2xl:  var(--radius-2xl);
+
+  /* Font family */
+  --font-sans: var(--font-sans);
+}
+
+/* ────────────────────────────────────────────────────────────
+   BASE / RESET
+──────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans, 'Inter', system-ui, -apple-system, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ────────────────────────────────────────────────────────────
+   CUSTOM SCROLLBAR
+──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-full, 9999px);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* ────────────────────────────────────────────────────────────
+   FOCUS RING
+──────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ────────────────────────────────────────────────────────────
+   SELECTION
+──────────────────────────────────────────────────────────── */
+::selection {
+  background-color: var(--accent-light);
+  color: var(--text-primary);
+}
