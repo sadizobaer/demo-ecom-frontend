@@ -1,298 +1,178 @@
-"use client";
-
 /**
- * Product Detail Page — fetches a single product and lets user
- * add to cart, wishlist, or favorites (auth required for those).
+ * Product Detail — Server Component.
+ * Fetches the product on the server (no flicker, no loading state),
+ * then delegates interactive actions to ProductActions (client).
  */
 
-import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { productApi, cartApi, wishlistApi, favoriteApi } from "@/lib/api/storefront";
-import { useAuth } from "@/contexts/AuthContext";
-import DynamicImage from "@/components/shared/DynamicImage";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { Product } from "@/types";
+import Link from "next/link";
+import DynamicImage from "@/components/shared/DynamicImage";
+import ProductActions from "./ProductActions";
 
-export default function ProductDetailPage({
+const BACKEND = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+
+async function getProduct(id: string) {
+  try {
+    const res = await fetch(`${BACKEND}/products/${id}`, {
+      headers: { "X-User-Type": "user" },
+      next: { revalidate: 30 },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export default async function ProductDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
-  const { isLoggedIn, user } = useAuth();
-  const router = useRouter();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFoundFlag, setNotFoundFlag] = useState(false);
+  const { id } = await params;
+  const product = await getProduct(id);
 
-  // Action states
-  const [cartAdded, setCartAdded] = useState(false);
-  const [inWishlist, setInWishlist] = useState(false);
-  const [inFavorites, setInFavorites] = useState(false);
-  const [cartLoading, setCartLoading] = useState(false);
-  const [wishLoading, setWishLoading] = useState(false);
-  const [favLoading, setFavLoading] = useState(false);
-  const [qty, setQty] = useState(1);
-
-  useEffect(() => {
-    productApi
-      .getById(id)
-      .then((p) => setProduct(p))
-      .catch(() => setNotFoundFlag(true))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <svg className="h-10 w-10 animate-spin text-[var(--accent)]" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
-      </div>
-    );
-  }
-
-  if (notFoundFlag || !product) {
-    notFound();
-  }
-
-  const requireAuth = (fn: () => Promise<void>) => async () => {
-    if (!isLoggedIn) { router.push("/login"); return; }
-    await fn();
-  };
-
-  const handleCart = requireAuth(async () => {
-    setCartLoading(true);
-    try {
-      await cartApi.add({
-        user_id: Number(user?.user_id) || 0,
-        product_id: product!.product_id,
-        quantity: qty,
-      });
-      setCartAdded(true);
-      setTimeout(() => setCartAdded(false), 2000);
-    } finally {
-      setCartLoading(false);
-    }
-  });
-
-  const handleWishlist = requireAuth(async () => {
-    setWishLoading(true);
-    try {
-      if (inWishlist) {
-        await wishlistApi.remove({ user_id: Number(user?.user_id) || 0, product_id: product!.product_id });
-        setInWishlist(false);
-      } else {
-        await wishlistApi.add({ user_id: Number(user?.user_id) || 0, product_id: product!.product_id });
-        setInWishlist(true);
-      }
-    } finally {
-      setWishLoading(false);
-    }
-  });
-
-  const handleFavorite = requireAuth(async () => {
-    setFavLoading(true);
-    try {
-      if (inFavorites) {
-        await favoriteApi.remove({ user_id: Number(user?.user_id) || 0, product_id: product!.product_id });
-        setInFavorites(false);
-      } else {
-        await favoriteApi.add({ user_id: Number(user?.user_id) || 0, product_id: product!.product_id });
-        setInFavorites(true);
-      }
-    } finally {
-      setFavLoading(false);
-    }
-  });
+  if (!product) notFound();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div className="min-h-screen" style={{ background: "var(--bg)" }}>
+
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mb-8">
-        <Link href="/" className="hover:text-[var(--accent)] transition-colors">Home</Link>
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-        <Link href="/products" className="hover:text-[var(--accent)] transition-colors">Products</Link>
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-        <span className="text-[var(--text-primary)] line-clamp-1">{product.name}</span>
-      </nav>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2">
+        <nav className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+          <Link href="/" className="hover:text-[var(--accent)] transition-colors">Home</Link>
+          <svg className="h-4 w-4 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+          <Link href="/products" className="hover:text-[var(--accent)] transition-colors">Products</Link>
+          <svg className="h-4 w-4 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="text-[var(--text-primary)] line-clamp-1 max-w-[200px]">{product.name}</span>
+        </nav>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Image */}
-        <div className="relative aspect-square rounded-2xl overflow-hidden bg-[var(--surface)]">
-          <DynamicImage
-            src={product.image_url}
-            alt={product.name}
-            fill
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover"
-          />
-          {product.stock === 0 && (
-            <div className="absolute top-4 left-4 px-3 py-1 bg-[var(--danger)] text-white text-xs font-semibold rounded-full">
-              Out of stock
+      {/* Main grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+
+          {/* Left — Image */}
+          <div className="space-y-4">
+            <div className="relative aspect-square rounded-3xl overflow-hidden bg-[var(--surface)] border border-[var(--border)] shadow-2xl shadow-black/20">
+              <DynamicImage
+                src={product.image_url}
+                alt={product.name}
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+              />
+              {product.stock === 0 && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                  <span className="px-6 py-2 bg-[var(--danger)] text-white font-bold rounded-full text-lg">
+                    Out of Stock
+                  </span>
+                </div>
+              )}
+              {product.category?.name && (
+                <div className="absolute top-4 left-4">
+                  <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[var(--accent)]/90 text-white backdrop-blur-sm">
+                    {product.category.name}
+                  </span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Info */}
-        <div className="flex flex-col gap-6">
-          {/* Category badge */}
-          {product.category?.name && (
-            <span className="inline-flex w-fit px-3 py-1 rounded-full bg-[var(--accent-light)] text-[var(--accent)] text-xs font-semibold">
-              {product.category.name}
-            </span>
-          )}
+            {/* Trust badges */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { icon: "🚚", label: "Free Shipping" },
+                { icon: "↩️", label: "Easy Returns" },
+                { icon: "🔒", label: "Secure Pay" },
+              ].map(b => (
+                <div key={b.label} className="flex flex-col items-center gap-1.5 p-3 bg-[var(--surface)] border border-[var(--border)] rounded-2xl text-center">
+                  <span className="text-xl">{b.icon}</span>
+                  <span className="text-xs font-medium text-[var(--text-secondary)]">{b.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-          <h1 className="text-3xl font-extrabold text-[var(--text-primary)] leading-tight">
-            {product.name}
-          </h1>
+          {/* Right — Info + Actions */}
+          <div className="flex flex-col gap-6">
+            {product.category?.name && (
+              <span className="inline-flex w-fit items-center px-3 py-1 rounded-full text-xs font-semibold bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20">
+                {product.category.name}
+              </span>
+            )}
 
-          <p className="text-[var(--text-secondary)] leading-relaxed">{product.description}</p>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] leading-tight">
+              {product.name}
+            </h1>
 
-          {/* Price + stock */}
-          <div className="flex items-center gap-4">
-            <span className="text-4xl font-extrabold text-[var(--accent)]">
-              ${product.price.toFixed(2)}
-            </span>
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-semibold ${
+            {/* Stars */}
+            <div className="flex items-center gap-2">
+              <div className="flex">
+                {[1,2,3,4,5].map(s => (
+                  <svg key={s} className={`h-4 w-4 ${s <= 4 ? "text-yellow-400" : "text-[var(--border)]"}`} fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+              <span className="text-sm text-[var(--text-secondary)]">4.0</span>
+              <span className="text-[var(--border)] select-none">·</span>
+              <span className="text-sm text-[var(--success)] font-medium">{product.stock} in stock</span>
+            </div>
+
+            {/* Price */}
+            <div className="flex items-baseline gap-3">
+              <span className="text-5xl font-black text-[var(--accent)]">
+                ${Number(product.price).toFixed(2)}
+              </span>
+              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                 product.stock > 0
                   ? "bg-[var(--success)]/10 text-[var(--success)]"
                   : "bg-[var(--danger)]/10 text-[var(--danger)]"
-              }`}
-            >
-              {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
-            </span>
-          </div>
+              }`}>
+                {product.stock > 0 ? "Available" : "Sold Out"}
+              </span>
+            </div>
 
-          {/* Quantity selector */}
-          {product.stock > 0 && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-[var(--text-secondary)]">Quantity:</span>
-              <div className="flex items-center gap-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-1">
-                <button
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all disabled:opacity-40"
-                  disabled={qty <= 1}
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
-                  </svg>
-                </button>
-                <span className="w-8 text-center font-semibold text-[var(--text-primary)]">{qty}</span>
-                <button
-                  onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all disabled:opacity-40"
-                  disabled={qty >= product.stock}
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
+            <div className="border-t border-[var(--border)]" />
+
+            {/* Client-side actions (qty, cart, wishlist, favorite) */}
+            <ProductActions product={product} />
+
+            {/* Tabs — description / details */}
+            <div className="border-t border-[var(--border)] pt-6">
+              <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">Description</h3>
+              <p className="text-[var(--text-secondary)] leading-relaxed text-sm">
+                {product.description || "No description available."}
+              </p>
+
+              <div className="mt-5 space-y-2.5">
+                {[
+                  { label: "Product ID", value: `#${product.product_id}` },
+                  { label: "Category", value: product.category?.name ?? "—" },
+                  { label: "Availability", value: product.stock > 0 ? "In Stock" : "Out of Stock" },
+                ].map(row => (
+                  <div key={row.label} className="flex justify-between py-2 border-b border-[var(--border)]/50 text-sm">
+                    <span className="text-[var(--text-secondary)]">{row.label}</span>
+                    <span className="text-[var(--text-primary)] font-semibold">{row.value}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
-
-          {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            {product.stock > 0 && (
-              <button
-                id={`detail-add-cart-${product.product_id}`}
-                onClick={handleCart}
-                disabled={cartLoading}
-                className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
-                  cartAdded
-                    ? "bg-[var(--success)] text-white shadow-[var(--success)]/20"
-                    : "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white shadow-[var(--accent)]/20"
-                }`}
-              >
-                {cartLoading ? (
-                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                ) : cartAdded ? (
-                  <>
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Added to Cart!
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    Add to Cart
-                  </>
-                )}
-              </button>
-            )}
-
-            <button
-              id={`detail-wishlist-${product.product_id}`}
-              onClick={handleWishlist}
-              disabled={wishLoading}
-              className={`flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl font-semibold text-sm border transition-all disabled:opacity-50 ${
-                inWishlist
-                  ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]"
-                  : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]/50 hover:text-[var(--text-primary)]"
-              }`}
-              aria-label="Add to Wishlist"
-            >
-              {wishLoading ? (
-                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-              ) : (
-                <svg className="h-4 w-4" fill={inWishlist ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
-              )}
-              <span className="hidden sm:inline">{inWishlist ? "Saved" : "Wishlist"}</span>
-            </button>
-
-            <button
-              id={`detail-favorite-${product.product_id}`}
-              onClick={handleFavorite}
-              disabled={favLoading}
-              className={`flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl font-semibold text-sm border transition-all disabled:opacity-50 ${
-                inFavorites
-                  ? "border-[var(--danger)] bg-[var(--danger)]/10 text-[var(--danger)]"
-                  : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--danger)]/50 hover:text-[var(--danger)]"
-              }`}
-              aria-label="Add to Favorites"
-            >
-              {favLoading ? (
-                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-              ) : (
-                <svg className="h-4 w-4" fill={inFavorites ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              )}
-              <span className="hidden sm:inline">{inFavorites ? "Favorited" : "Favorite"}</span>
-            </button>
           </div>
+        </div>
 
-          {!isLoggedIn && (
-            <p className="text-xs text-[var(--text-secondary)] bg-[var(--surface)] border border-[var(--border)] rounded-xl px-4 py-3">
-              💡{" "}
-              <Link href="/login" className="text-[var(--accent)] hover:underline font-medium">
-                Sign in
-              </Link>{" "}
-              to add items to your cart, wishlist, and favorites.
-            </p>
-          )}
+        {/* Back link */}
+        <div className="mt-12">
+          <Link href="/products" className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to all products
+          </Link>
         </div>
       </div>
     </div>

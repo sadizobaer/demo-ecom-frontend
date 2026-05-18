@@ -1,0 +1,218 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
+import { cartApi, wishlistApi, favoriteApi } from "@/lib/api/storefront";
+
+interface Product {
+  product_id: number;
+  name: string;
+  price: number;
+  stock: number;
+}
+
+export default function ProductActions({ product }: { product: Product }) {
+  const { isLoggedIn, user } = useAuth();
+  const router = useRouter();
+  const [qty, setQty] = useState(1);
+  const [cartAdded, setCartAdded] = useState(false);
+  const [inWishlist, setInWishlist] = useState(false);
+  const [inFavorites, setInFavorites] = useState(false);
+  const [cartLoading, setCartLoading] = useState(false);
+  const [wishLoading, setWishLoading] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
+
+  const requireAuth = (fn: () => Promise<void>) => async () => {
+    if (!isLoggedIn) { router.push("/login"); return; }
+    await fn();
+  };
+
+  const handleCart = requireAuth(async () => {
+    setCartLoading(true);
+    try {
+      await cartApi.add({
+        user_id: Number(user?.user_id) || 0,
+        product_id: product.product_id,
+        quantity: qty,
+      });
+      setCartAdded(true);
+      setTimeout(() => setCartAdded(false), 2500);
+    } finally {
+      setCartLoading(false);
+    }
+  });
+
+  const handleWishlist = requireAuth(async () => {
+    setWishLoading(true);
+    try {
+      if (inWishlist) {
+        await wishlistApi.remove({ user_id: Number(user?.user_id) || 0, product_id: product.product_id });
+        setInWishlist(false);
+      } else {
+        await wishlistApi.add({ user_id: Number(user?.user_id) || 0, product_id: product.product_id });
+        setInWishlist(true);
+      }
+    } finally {
+      setWishLoading(false);
+    }
+  });
+
+  const handleFavorite = requireAuth(async () => {
+    setFavLoading(true);
+    try {
+      if (inFavorites) {
+        await favoriteApi.remove({ user_id: Number(user?.user_id) || 0, product_id: product.product_id });
+        setInFavorites(false);
+      } else {
+        await favoriteApi.add({ user_id: Number(user?.user_id) || 0, product_id: product.product_id });
+        setInFavorites(true);
+      }
+    } finally {
+      setFavLoading(false);
+    }
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Quantity selector */}
+      {product.stock > 0 && (
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-semibold text-[var(--text-primary)]">Qty</span>
+          <div className="flex items-center bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
+            <button
+              onClick={() => setQty(q => Math.max(1, q - 1))}
+              disabled={qty <= 1}
+              className="w-10 h-10 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all disabled:opacity-30"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
+              </svg>
+            </button>
+            <span className="w-10 text-center font-bold text-[var(--text-primary)]">{qty}</span>
+            <button
+              onClick={() => setQty(q => Math.min(product.stock, q + 1))}
+              disabled={qty >= product.stock}
+              className="w-10 h-10 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all disabled:opacity-30"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+          <span className="text-sm text-[var(--text-secondary)]">
+            Total:{" "}
+            <span className="text-[var(--accent)] font-bold">
+              ${(Number(product.price) * qty).toFixed(2)}
+            </span>
+          </span>
+        </div>
+      )}
+
+      {/* Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        {product.stock > 0 ? (
+          <button
+            id={`detail-add-cart-${product.product_id}`}
+            onClick={handleCart}
+            disabled={cartLoading}
+            className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+              cartAdded
+                ? "bg-[var(--success)] text-white shadow-[var(--success)]/30"
+                : "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white shadow-[var(--accent)]/30"
+            }`}
+          >
+            {cartLoading ? (
+              <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            ) : cartAdded ? (
+              <>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Added to Cart!
+              </>
+            ) : (
+              <>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Add to Cart
+              </>
+            )}
+          </button>
+        ) : (
+          <div className="flex-1 flex items-center justify-center py-4 rounded-2xl font-bold text-base bg-[var(--surface)] border border-[var(--border)] text-[var(--text-secondary)]">
+            Out of Stock
+          </div>
+        )}
+
+        {/* Wishlist */}
+        <button
+          id={`detail-wishlist-${product.product_id}`}
+          onClick={handleWishlist}
+          disabled={wishLoading}
+          aria-label="Wishlist"
+          className={`flex items-center justify-center gap-2 px-5 py-4 rounded-2xl font-semibold text-sm border-2 transition-all disabled:opacity-50 ${
+            inWishlist
+              ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
+              : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          }`}
+        >
+          {wishLoading ? (
+            <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+          ) : (
+            <svg className="h-5 w-5" fill={inWishlist ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          )}
+          <span className="hidden sm:inline">{inWishlist ? "Saved" : "Wishlist"}</span>
+        </button>
+
+        {/* Favorite */}
+        <button
+          id={`detail-favorite-${product.product_id}`}
+          onClick={handleFavorite}
+          disabled={favLoading}
+          aria-label="Favorite"
+          className={`flex items-center justify-center gap-2 px-5 py-4 rounded-2xl font-semibold text-sm border-2 transition-all disabled:opacity-50 ${
+            inFavorites
+              ? "border-[var(--danger)] bg-[var(--danger)]/10 text-[var(--danger)]"
+              : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--danger)] hover:text-[var(--danger)]"
+          }`}
+        >
+          {favLoading ? (
+            <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+          ) : (
+            <svg className="h-5 w-5" fill={inFavorites ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          )}
+          <span className="hidden sm:inline">{inFavorites ? "Liked" : "Favorite"}</span>
+        </button>
+      </div>
+
+      {/* Auth hint */}
+      {!isLoggedIn && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-xl text-sm text-[var(--text-secondary)]">
+          <svg className="h-4 w-4 text-[var(--accent)] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>
+            <Link href="/login" className="text-[var(--accent)] font-semibold hover:underline">Sign in</Link>{" "}
+            to add to cart, wishlist, or favorites.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
