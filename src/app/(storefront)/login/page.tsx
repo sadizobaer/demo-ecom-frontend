@@ -1,64 +1,85 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { authApi } from "@/lib/api/storefront";
+import { loginAction } from "./actions";
 
 export default function LoginPage() {
   const router = useRouter();
   const { isLoggedIn, login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [state, formAction, pending] = useActionState(loginAction, null);
+  const [success, setSuccess] = useState(false);
 
   // Already logged in → go home
   useEffect(() => {
-    if (isLoggedIn) router.replace("/");
-  }, [isLoggedIn, router]);
+    if (isLoggedIn && !success) router.replace("/");
+  }, [isLoggedIn, router, success]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      const res = await authApi.login({ email, password });
-      login(res.token, res.refresh, undefined, email);
+  // Server Action returned tokens → store in AuthContext + show success
+  useEffect(() => {
+    if (!state || state.error || !state.token) return;
+
+    // Save to AuthContext (writes localStorage, sets isLoggedIn = true)
+    login(
+      state.token,
+      state.refresh   ?? "",
+      state.user_id,
+      state.username  ?? "",
+      state.email     ?? ""
+    );
+
+    // Show success message, then redirect after 1.5 s
+    setSuccess(true);
+    const timer = setTimeout(() => {
       router.replace("/");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid email or password.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* ── Success screen ──────────────────────────────────────── */
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--bg)" }}>
+        <div className="text-center">
+          <div className="w-24 h-24 rounded-full bg-[var(--success)]/15 flex items-center justify-center mx-auto mb-6 animate-bounce">
+            <svg className="h-12 w-12 text-[var(--success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-extrabold text-[var(--text-primary)] mb-2">Login Successful!</h2>
+          <p className="text-[var(--text-secondary)]">
+            Welcome back, <span className="text-[var(--accent)] font-semibold">{state?.username ?? "there"}</span>!
+          </p>
+          <p className="text-sm text-[var(--text-secondary)] mt-2">Redirecting you to the store…</p>
+          <div className="mt-6 flex justify-center">
+            <div className="h-1 w-32 bg-[var(--border)] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[var(--success)] rounded-full transition-all"
+                style={{ width: "100%", transition: "width 1.4s linear" }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Login form ──────────────────────────────────────────── */
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-16"
-      style={{ background: "var(--bg)" }}>
-
-      {/* Background decoration */}
+    <div className="min-h-screen flex items-center justify-center px-4 py-16" style={{ background: "var(--bg)" }}>
+      {/* Background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div style={{
-          position: "absolute", top: "-20%", right: "-10%",
-          width: 600, height: 600, borderRadius: "50%",
-          background: "var(--accent)", opacity: 0.04, filter: "blur(80px)",
-        }} />
-        <div style={{
-          position: "absolute", bottom: "-10%", left: "-10%",
-          width: 500, height: 500, borderRadius: "50%",
-          background: "var(--accent)", opacity: 0.04, filter: "blur(80px)",
-        }} />
+        <div style={{ position: "absolute", top: "-20%", right: "-10%", width: 600, height: 600, borderRadius: "50%", background: "var(--accent)", opacity: 0.04, filter: "blur(80px)" }} />
+        <div style={{ position: "absolute", bottom: "-10%", left: "-10%", width: 500, height: 500, borderRadius: "50%", background: "var(--accent)", opacity: 0.04, filter: "blur(80px)" }} />
       </div>
 
       <div className="w-full max-w-md relative">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-[var(--accent)] flex items-center justify-center text-white text-lg font-black shadow-lg shadow-[var(--accent)]/30">
-              SW
-            </div>
+            <div className="w-12 h-12 rounded-2xl bg-[var(--accent)] flex items-center justify-center text-white text-lg font-black shadow-lg shadow-[var(--accent)]/30">SW</div>
             <span className="text-2xl font-extrabold text-[var(--text-primary)]">
               Shop<span className="text-[var(--accent)]">Wave</span>
             </span>
@@ -67,31 +88,30 @@ export default function LoginPage() {
           <p className="mt-2 text-[var(--text-secondary)]">Sign in to your account to continue</p>
         </div>
 
-        {/* Card */}
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl shadow-black/20 p-8">
-          {error && (
+          {/* Error banner */}
+          {state?.error && (
             <div className="mb-5 flex items-start gap-3 px-4 py-3 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-[var(--danger)] text-sm">
               <svg className="h-4 w-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {error}
+              {state.error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form action={formAction} className="space-y-5">
             <div>
               <label htmlFor="login-email" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
                 Email address
               </label>
               <input
                 id="login-email"
+                name="email"
                 type="email"
                 required
                 autoComplete="email"
                 autoFocus
                 placeholder="you@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] text-sm placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 transition-all"
               />
             </div>
@@ -102,12 +122,11 @@ export default function LoginPage() {
               </label>
               <input
                 id="login-password"
+                name="password"
                 type="password"
                 required
                 autoComplete="current-password"
                 placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] text-sm placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 transition-all"
               />
             </div>
@@ -115,10 +134,10 @@ export default function LoginPage() {
             <button
               id="login-submit"
               type="submit"
-              disabled={loading}
-              className="w-full py-3.5 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-bold text-sm transition-all shadow-lg shadow-[var(--accent)]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={pending}
+              className="w-full py-3.5 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-bold text-sm transition-all shadow-lg shadow-[var(--accent)]/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? (
+              {pending ? (
                 <>
                   <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

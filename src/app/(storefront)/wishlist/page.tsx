@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserData } from "@/contexts/UserDataContext";
 import { wishlistApi } from "@/lib/api/storefront";
 import EmptyState from "@/components/shared/EmptyState";
 import DynamicImage from "@/components/shared/DynamicImage";
@@ -14,13 +15,14 @@ import type { WishlistItem } from "@/types";
 
 export default function WishlistPage() {
   const { isLoggedIn, user } = useAuth();
+  const { unmarkFromWishlist } = useUserData();
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState<number | null>(null);
 
   const fetchWishlist = async () => {
     try {
-      const data = await wishlistApi.get();
+      const data = await wishlistApi.get(Number(user?.user_id) || 0);
       setItems(Array.isArray(data) ? data : []);
     } catch {
       setItems([]);
@@ -44,6 +46,7 @@ export default function WishlistPage() {
         user_id: Number(user?.user_id) || 0,
         product_id: productId,
       });
+      unmarkFromWishlist(productId); // ← instantly clears ProductCard wishlist icon
       setItems((prev) => prev.filter((i) => i.product.product_id !== productId));
     } finally {
       setRemoving(null);

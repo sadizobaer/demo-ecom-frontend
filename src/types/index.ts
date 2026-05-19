@@ -17,6 +17,10 @@ export interface AuthTokens {
   message: string;
   token: string;
   refresh: string;
+  user_id: number;
+  username: string;
+  email: string;
+  is_admin: boolean;
 }
 
 export interface RegisterPayload {
@@ -99,11 +103,13 @@ export interface AddToCartPayload {
 }
 
 export interface UpdateCartPayload {
+  cart_id: number;
   product_id: number;
   quantity: number;
 }
 
 export interface RemoveFromCartPayload {
+  cart_id: number;
   product_id: number;
 }
 

@@ -29,7 +29,19 @@ function getBaseUrl(): string {
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("auth_token");
+  const token = localStorage.getItem("auth_token");
+  if (!token) return null;
+  // Quick expiry check — avoids sending dead tokens to the backend
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (payload.exp && Date.now() / 1000 > payload.exp) {
+      // Expired — purge storage so AuthContext auto-logs out next mount
+      ["auth_token","auth_refresh","auth_user_id","auth_username","auth_email"]
+        .forEach(k => localStorage.removeItem(k));
+      return null;
+    }
+  } catch { /* malformed token — treat as missing */ return null; }
+  return token;
 }
 
 function getUserId(): string | null {

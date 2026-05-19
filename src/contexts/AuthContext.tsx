@@ -36,6 +36,7 @@ interface AuthContextType {
   login: (
     token: string,
     refresh: string,
+    userId?: number | string,
     username?: string,
     email?: string
   ) => void;
@@ -76,23 +77,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Rehydrate from localStorage on mount (client-only)
+  // Rehydrate from localStorage on mount — validate token before trusting it
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-    const storedUserId = localStorage.getItem("auth_user_id");
-    const storedUsername = localStorage.getItem("auth_username");
-    const storedEmail = localStorage.getItem("auth_email");
+    const token    = localStorage.getItem("auth_token");
+    if (!token) return;
 
-    if (token) {
-      setIsLoggedIn(true);
-      if (storedUserId || storedUsername || storedEmail) {
-        setUser({
-          user_id: storedUserId ?? "",
-          username: storedUsername ?? "",
-          email: storedEmail ?? "",
-        });
-      }
+    // Decode and check expiry — decodeJwtPayload returns null if expired/invalid
+    const payload = decodeJwtPayload(token);
+    if (!payload) {
+      // Token is expired or malformed — clean up stale storage
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_refresh");
+      localStorage.removeItem("auth_user_id");
+      localStorage.removeItem("auth_username");
+      localStorage.removeItem("auth_email");
+      return;
     }
+
+    const userId   = localStorage.getItem("auth_user_id")  ?? "";
+    const username = localStorage.getItem("auth_username") ?? "";
+    const email    = localStorage.getItem("auth_email")    ?? "";
+
+    setIsLoggedIn(true);
+    setUser({ user_id: userId, username, email });
   }, []);
 
   // Listen for login events from GlobalAuthModal (decoupled modal)
@@ -121,23 +128,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const closeAuthModal = useCallback(() => setAuthModalOpen(false), []);
 
   const login = useCallback(
-    (token: string, refresh: string, username = "", email = "") => {
+    (token: string, refresh: string, userId?: number | string, username = "", email = "") => {
       localStorage.setItem("auth_token", token);
       localStorage.setItem("auth_refresh", refresh);
 
-      // Extract user_id from JWT payload
+      // Prefer explicit userId from response; fallback to JWT payload
       const payload = decodeJwtPayload(token);
-      const userId = payload?.user_id;
+      const resolvedUserId = userId ?? payload?.user_id;
 
-      if (userId !== undefined && userId !== null) {
-        localStorage.setItem("auth_user_id", String(userId));
+      if (resolvedUserId !== undefined && resolvedUserId !== null) {
+        localStorage.setItem("auth_user_id", String(resolvedUserId));
       }
       if (username) localStorage.setItem("auth_username", username);
       if (email) localStorage.setItem("auth_email", email);
 
       setIsLoggedIn(true);
       setUser({
-        user_id: userId ?? "",
+        user_id: resolvedUserId ?? "",
         username,
         email,
       });
@@ -152,6 +159,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("auth_user_id");
     localStorage.removeItem("auth_username");
     localStorage.removeItem("auth_email");
+    // Clear server-action cookies too
+    const expire = "expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+    ["auth_token","auth_refresh","auth_user_id","auth_username","auth_email"].forEach(
+      name => { document.cookie = `${name}=; ${expire}`; }
+    );
     setIsLoggedIn(false);
     setUser(null);
   }, []);

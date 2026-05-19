@@ -88,7 +88,9 @@ export const productApi = {
 // Requires auth token (injected automatically if logged in)
 
 export const cartApi = {
-  get: () => storefrontFetch<Cart>("/cart"),
+  /** Pass user_id so the backend filters by user */
+  get: (userId: number | string) =>
+    storefrontFetch<Cart>(`/cart?user_id=${userId}`),
 
   add: (payload: AddToCartPayload) =>
     storefrontFetch<{ message: string }>("/cart/add", {
@@ -115,7 +117,13 @@ export const cartApi = {
 // =================== WISHLIST ===================
 
 export const wishlistApi = {
-  get: () => storefrontFetch<WishlistItem[]>("/wishlist"),
+  /** Returns unwrapped WishlistItem[] — backend wraps in { wishlist: [...] } */
+  get: async (userId: number | string): Promise<WishlistItem[]> => {
+    const res = await storefrontFetch<{ wishlist: WishlistItem[] }>(
+      `/wishlist?user_id=${userId}`
+    );
+    return res?.wishlist ?? [];
+  },
 
   add: (payload: WishlistPayload) =>
     storefrontFetch<{ message: string }>("/wishlist/add", {
@@ -135,7 +143,13 @@ export const wishlistApi = {
 // =================== FAVORITES ===================
 
 export const favoriteApi = {
-  get: () => storefrontFetch<FavoriteItem[]>("/favorites"),
+  /** Returns unwrapped FavoriteItem[] — backend wraps in { favorites: [...] } */
+  get: async (userId: number | string): Promise<FavoriteItem[]> => {
+    const res = await storefrontFetch<{ favorites: FavoriteItem[] }>(
+      `/favorites?user_id=${userId}`
+    );
+    return res?.favorites ?? [];
+  },
 
   add: (payload: FavoritePayload) =>
     storefrontFetch<{ message: string }>("/favorites/add", {

@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserData } from "@/contexts/UserDataContext";
 import { favoriteApi } from "@/lib/api/storefront";
 import EmptyState from "@/components/shared/EmptyState";
 import DynamicImage from "@/components/shared/DynamicImage";
@@ -14,13 +15,14 @@ import type { FavoriteItem } from "@/types";
 
 export default function FavoritesPage() {
   const { isLoggedIn, user } = useAuth();
+  const { unmarkFromFavorites } = useUserData();
   const [items, setItems] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState<number | null>(null);
 
   const fetchFavorites = async () => {
     try {
-      const data = await favoriteApi.get();
+      const data = await favoriteApi.get(Number(user?.user_id) || 0);
       setItems(Array.isArray(data) ? data : []);
     } catch {
       setItems([]);
@@ -44,6 +46,7 @@ export default function FavoritesPage() {
         user_id: Number(user?.user_id) || 0,
         product_id: productId,
       });
+      unmarkFromFavorites(productId); // ← instantly clears ProductCard heart icon
       setItems((prev) => prev.filter((i) => i.product.product_id !== productId));
     } finally {
       setRemoving(null);

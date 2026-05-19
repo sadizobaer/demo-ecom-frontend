@@ -8,12 +8,14 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserData } from "@/contexts/UserDataContext";
 import { cartApi, orderApi } from "@/lib/api/storefront";
 import EmptyState from "@/components/shared/EmptyState";
 import type { Cart } from "@/types";
 
 export default function CartPage() {
   const { isLoggedIn, user } = useAuth();
+  const { unmarkFromCart } = useUserData();
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -22,7 +24,7 @@ export default function CartPage() {
 
   const fetchCart = async () => {
     try {
-      const data = await cartApi.get();
+      const data = await cartApi.get(Number(user?.user_id) || 0);
       setCart(data);
     } catch {
       setCart(null);
@@ -41,7 +43,11 @@ export default function CartPage() {
 
   const handleRemove = async (productId: number) => {
     try {
-      await cartApi.remove({ product_id: productId });
+      await cartApi.remove({
+        cart_id: cart?.cart_id ?? 0,
+        product_id: productId,
+      });
+      unmarkFromCart(productId); // ← instantly clears ProductCard badge everywhere
       fetchCart();
     } catch {
       setError("Failed to remove item.");
@@ -51,7 +57,11 @@ export default function CartPage() {
   const handleUpdate = async (productId: number, qty: number) => {
     if (qty < 1) return;
     try {
-      await cartApi.update({ product_id: productId, quantity: qty });
+      await cartApi.update({
+        cart_id: cart?.cart_id ?? 0,
+        product_id: productId,
+        quantity: qty,
+      });
       fetchCart();
     } catch {
       setError("Failed to update quantity.");
