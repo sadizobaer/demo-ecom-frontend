@@ -55,8 +55,8 @@ export default function WishlistPage() {
 
   if (!isLoggedIn) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-8">My Wishlist</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 lg:py-14">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mb-8">My Wishlist</h1>
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl">
           <EmptyState
             icon="wishlist"
@@ -71,8 +71,8 @@ export default function WishlistPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-8">My Wishlist</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 lg:py-14">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mb-8">My Wishlist</h1>
         <div className="flex items-center justify-center py-32">
           <svg className="h-8 w-8 animate-spin text-[var(--accent)]" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -84,9 +84,9 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[var(--text-primary)]">My Wishlist</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 lg:py-14">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">My Wishlist</h1>
         {items.length > 0 && (
           <p className="text-[var(--text-secondary)] mt-2">{items.length} saved item{items.length !== 1 ? "s" : ""}</p>
         )}

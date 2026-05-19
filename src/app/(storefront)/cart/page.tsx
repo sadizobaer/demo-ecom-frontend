@@ -145,8 +145,8 @@ export default function CartPage() {
   const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-8">Your Cart</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 lg:py-14">
+      <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mb-6 sm:mb-8">Your Cart</h1>
 
       {error && (
         <div className="mb-4 px-4 py-3 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-[var(--danger)] text-sm">
@@ -170,10 +170,10 @@ export default function CartPage() {
             {items.map((item) => (
               <div
                 key={item.product.product_id}
-                className="flex items-center gap-4 p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl"
+                className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl"
               >
                 {/* Image */}
-                <div className="w-20 h-20 rounded-xl overflow-hidden bg-[var(--surface-2)] flex-shrink-0">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[var(--surface-2)] flex-shrink-0">
                   {item.product.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -224,9 +224,9 @@ export default function CartPage() {
                   </button>
                 </div>
 
-                {/* Line total */}
-                <div className="text-sm font-semibold text-[var(--text-primary)] w-20 text-right">
-                  ${(item.product.price * item.quantity).toFixed(2)}
+                {/* Line total — hidden on xs, shown sm+ */}
+                <div className="hidden sm:block text-sm font-semibold text-[var(--text-primary)] w-20 text-right">
+                  ৳{(item.product.price * item.quantity).toLocaleString()}
                 </div>
 
                 {/* Remove */}
