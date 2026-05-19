@@ -82,16 +82,48 @@ export default async function ProductDetailPage({
               )}
             </div>
 
-            {/* Trust badges */}
+            {/* Trust badges — same icons & style as the home page */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { icon: "🚚", label: "Free Shipping" },
-                { icon: "↩️", label: "Easy Returns" },
-                { icon: "🔒", label: "Secure Pay" },
-              ].map(b => (
-                <div key={b.label} className="flex flex-col items-center gap-1.5 p-3 bg-[var(--surface)] border border-[var(--border)] rounded-2xl text-center">
-                  <span className="text-xl">{b.icon}</span>
-                  <span className="text-xs font-medium text-[var(--text-secondary)]">{b.label}</span>
+                {
+                  label: "Fast Shipping",
+                  desc: "Free on orders over ৳1000",
+                  icon: (
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" />
+                    </svg>
+                  ),
+                },
+                {
+                  label: "Secure Payment",
+                  desc: "256-bit encryption",
+                  icon: (
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  ),
+                },
+                {
+                  label: "Easy Returns",
+                  desc: "30-day hassle-free",
+                  icon: (
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  ),
+                },
+              ].map((b) => (
+                <div
+                  key={b.label}
+                  className="flex flex-col items-center gap-2 p-3 bg-[var(--surface)] border border-[var(--border)] rounded-2xl text-center"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center">
+                    {b.icon}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--text-primary)]">{b.label}</p>
+                    <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{b.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>
